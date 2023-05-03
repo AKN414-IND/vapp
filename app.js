@@ -1,55 +1,41 @@
-const localVideo = document.querySelector('#local-video');
-const remoteVideo = document.querySelector('#remote-video');
-const callBtn = document.querySelector('#call-btn');
-const hangupBtn = document.querySelector('#hangup-btn');
-let localStream, remoteStream, rtcPeerConnection;
+const startButton = document.getElementById('startCall');
+const stopButton = document.getElementById('stopCall');
+const localVideo = document.getElementById('localVideo');
+const remoteVideos = document.querySelector('.remote-videos');
 
-const ICE_SERVERS = [
-  { urls: 'stun:stun.stunprotocol.org' },
-  { urls: 'stun:stun.l.google.com:19302' },
-];
+let localStream;
+let remoteStreams = [];
 
-const startCall = async () => {
+// Get access to user's camera and microphone
+async function startCall() {
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true,
-    });
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
     localVideo.srcObject = localStream;
-
-    rtcPeerConnection = new RTCPeerConnection({
-      iceServers: ICE_SERVERS,
-    });
-    rtcPeerConnection.addStream(localStream);
-
-    rtcPeerConnection.ontrack = (event) => {
-      remoteStream = event.streams[0];
-      remoteVideo.srcObject = remoteStream;
-    };
-
-    rtcPeerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        // send the candidate to the other peer
-      }
-    };
-
-    // create offer and set as local description
-    const offer = await rtcPeerConnection.createOffer();
-    await rtcPeerConnection.setLocalDescription(new RTCSessionDescription(offer));
-
-    // send offer to the other peer
   } catch (error) {
-    console.log(error);
+    console.error('Error getting user media:', error);
   }
-};
+}
 
-const hangupCall = () => {
-  rtcPeerConnection.close();
-  localStream.getTracks().forEach((track) => track.stop());
-  remoteStream.getTracks().forEach((track) => track.stop());
+// Stop the call and release the user's media devices
+function stopCall() {
+  localStream.getTracks().forEach(track => track.stop());
   localVideo.srcObject = null;
-  remoteVideo.srcObject = null;
-};
+  remoteStreams.forEach(stream => stream.getTracks().forEach(track => track.stop()));
+  remoteStreams = [];
+  remoteVideos.innerHTML = '';
+}
 
-callBtn.addEventListener('click', startCall);
-hangupBtn.addEventListener('click', hangupCall);
+// Add a new remote video element to the page
+function addRemoteVideo(stream) {
+  const video = document.createElement('video');
+  video.srcObject = stream;
+  video.autoplay = true;
+  video.playsinline = true;
+  remoteStreams.push(stream);
+  remoteVideos.appendChild(video);
+}
+
+// Listen for button clicks
+startButton.addEventListener('click', startCall);
+stopButton.addEventListener('click', stopCall);
+
